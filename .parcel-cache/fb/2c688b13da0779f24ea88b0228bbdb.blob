@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Stickies</title>
+
+    <link rel="apple-touch-icon" href="dd56002a68f85714c6c8df9c7ec11896">
+    <link rel="manifest" href="4559467feff57e94ba79c65ae827ffa3">
+    <link rel="icon" href="2e8cf6a88f039945fe88538ecc160e74">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+  </head>
+  <body>
+    <noscript> You must enable Javascript to run this app.</noscript>
+
+    <div class="App">
+
+      <div class="toolbar">
+        <div id="color-select" class="color-select" value="#FD1" draggable="true">
+          <ul id="color-options" class="color-options hidden">
+            <li value="#FD1"></li>
+            <li value="#AAF"></li>
+            <li value="#FAA"></li>
+        </ul></div>
+      </div>
+
+      <div id="sticky-container" class="sticky-container">
+
+      </div>
+
+    </div>
+    
+    <script src="292781156b7424fb7ec5bde47a34866d"></script>
+    <script data-parcel-key="4271c046cf6b87c3ddecaf9d4713d0fd">
+      const sw = "serviceWorker.js";
+      if("serviceWorker" in navigator) {
+      navigator.serviceWorker
+      .register(sw)
+      .then(registration => {
+        registration.onupdatefound = () => {
+          const installingWorker = registration.installing;
+          if (installingWorker === null) {
+            return
+            ;
+          }
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === "installed") {
+              if (navigator.serviceWorker.controller) {
+                console.log('Need to update');
+              } else {
+                console.log("Content is chached");
+              }
+            }
+          }
+        }
+      })
+      .catch(err => console.error(err))
+      }
+    </script>
+  </body>
+</html>

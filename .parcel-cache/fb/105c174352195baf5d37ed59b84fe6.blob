@@ -1,0 +1,59 @@
+* {
+  margin: 0;
+  padding: 0;
+  border: none;
+  text-decoration: none;
+  outline: none;
+  list-style: none;
+}
+*[value="#FD1"] {
+  background-color: #FD1;
+}
+*[value="#FAA"] {
+  background-color: #FAA;
+}
+*[value="#AAF"] {
+  background-color: #AAF;
+}
+* .hidden {
+  display: none;
+}
+
+body {
+  background: radial-gradient(circle at 100% 0%, #3e7055, #316147);
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+.App {
+  height: 100vh;
+}
+
+.color-select {
+  position: relative;
+  width: 3rem;
+  height: 1rem;
+  content: "v";
+}
+.color-select .color-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+}
+.color-select .color-options li {
+  height: 1rem;
+  width: 3rem;
+  transition: margin 0.2s;
+}
+.color-select .color-options li:hover {
+  margin: 0px 0px 0px 2px;
+}
+
+.sticky-container {
+  height: calc(100% - 1rem);
+}
+.sticky-container .sticky {
+  position: absolute;
+  min-height: 100px;
+  min-width: 100px;
+}
