@@ -5,14 +5,15 @@
   text-decoration: none;
   outline: none;
   list-style: none;
+  box-sizing: border-box;
 
-  &[value="#FD1"] {
+  &[data-color="#FD1"] {
     background-color: #FD1;
   }
-  &[value="#FAA"] {
+  &[data-color="#FAA"] {
     background-color: #FAA;
   }
-  &[value="#AAF"] {
+  &[data-color="#AAF"] {
     background-color: #AAF;
   }
   
@@ -21,44 +22,107 @@
   }
 }
 
-body {
-  background: radial-gradient(circle at 100% 0%, #3e7055, #316147);
-  background-repeat: no-repeat;
+html, body, .App {
   overflow: hidden;
 }
 
-.App {
+body {
+  background: radial-gradient(circle at 100% 0%, #3e7055, #316147);
+  background-repeat: no-repeat;
   height: 100vh;
+  width: 100vw;
 }
 
-.color-select {
-  position: relative;
-  width: 3rem;
+.App {
+  position: fixed;
+  height: 100vh;
+  width: 100vw;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 10%;
+  position: fixed;
+  top: 1rem;
   height: 1rem;
-  content: "v";
+  width: 100%;
+  z-index: 9999;
+  pointer-events: none;
 
-  .color-options {
-    position: absolute;
-    top: 100%;
-    left: 0;
+  > * {
+    pointer-events: auto;
+  }
 
-    li {
-      height: 1rem;
-      width: 3rem;
-      transition: margin 0.2s;
 
-      &:hover {
-        margin: 0px 0px 0px 2px;
+  .color-select {
+    position: relative;
+    width: 3rem;
+    height: 1rem;
+    content: "v";
+
+    .color-options {
+      position: absolute;
+      top: 100%;
+      left: 0;
+
+      li {
+        height: 1rem;
+        width: 3rem;
+        transition: margin 0.2s;
+
+        &:hover {
+          margin: 0px 0px 0px 2px;
+        }
       }
     }
+  }
+
+  .trash {
+    user-select: none;
+    &:hover {
+    }
+
   }
 }
 
 .sticky-container {
   height: calc(100% - 1rem);
   .sticky {
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
     position: absolute;
-    min-height: 100px;
-    min-width: 100px;
+    min-height: 8rem;
+    min-width: 8rem;
+
+    div {
+      height: 1rem;
+      &:hover{
+        cursor: pointer;
+      }
+    }
+
+    textarea {
+      min-width: 8rem;
+      min-height: 8rem;
+      color: #454545;
+      font-weight: bold;
+      background-color: transparent;
+        margin: 0 !important;
+      &::-webkit-scrollbar{
+        width: 8px;
+        background-color: transparent;
+      }
+      &::-webkit-scrollbar-thumb{
+        border-radius: 8px;
+        background-color: rgba(0, 0, 0, 0.35);
+      }
+      &::-webkit-resizer {
+        background: none;
+        background-color: rgba(255, 255, 255, 0.35);
+        &::after {
+          content: 't';
+        }
+      }
+    }
   }
 }
