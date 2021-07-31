@@ -1,4 +1,5 @@
 import "../styles/style.scss";
+import initDB from "./indexedDB.js";
 
 const colorSelect = document.getElementById("color-select");
 const colorOptions = document.getElementById("color-options");
@@ -6,6 +7,66 @@ const stickyContainer = document.getElementById("sticky-container");
 const trash = document.getElementById("trash");
 const trashPath = document.getElementById("trash-path");
 const hidden = document.getElementById("hidden");
+
+function getStickies() {
+  initDB()
+    .then((res) => {
+      const request = res.store.getAll();
+      request.onsuccess = (evt) => {
+        const stickies = evt.target.result;
+        for (let s of stickies) {
+          let newSticky = createSticky(s.id, s.top, s.left, s.color, s.message);
+          stickyContainer.appendChild(newSticky);
+        }
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
+
+function addSticky({ color, top, left }) {
+  initDB()
+    .then((res) => {
+      const request = res.store.add({ color, top, left, message: "" });
+      request.onsuccess = (evt) => {
+        console.log(evt.target.result);
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
+
+function updateSticky({ id, color, top, left, message }) {
+  initDB()
+    .then((res) => {
+      const request = res.store.put({ id, color, top, left, message });
+      request.onsuccess = (evt) => {
+        console.log(evt.target.result);
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
+
+function deleteSticky(id) {
+  initDB()
+    .then((res) => {
+      const request = res.store.delete(parseInt(id));
+      request.onsuccess = (evt) => {
+        console.log(evt.target.result);
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
 
 const removeChildren = (query) => {
   const remove = [...document.querySelectorAll(query)];
@@ -46,15 +107,17 @@ const STATE = {
   dragging: null,
 };
 
-const createElm = (obj) => {
+function createElm(obj) {
   const { tag, classList, id, value, style, dataset } = obj;
   const elm = document.createElement(tag);
-  elm.classList = classList;
+  if (classList) {
+    elm.classList = classList;
+  }
   if (id) {
     elm.id = id;
   }
   if (value) {
-    elm.setAttribute("value", value);
+    elm.value = value;
   }
   if (style) {
     for (let k of Object.keys(style)) {
@@ -67,19 +130,30 @@ const createElm = (obj) => {
     }
   }
   return elm;
+}
+
+const debounce = (func, time = 1000) => {
+  let timeout;
+  return (args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      func(args);
+    }, time);
+  };
 };
 
-function createSticky(pageY, pageX) {
+function createSticky(id, pageY, pageX, color = null, value = null) {
   const newSticky = createElm({
     tag: "div",
     classList: "sticky",
     style: {
-      top: pageY + "px",
-      left: pageX + "px",
+      top: typeof pageY === "string" ? pageY : pageY + "px",
+      left: typeof pageX === "string" ? pageX : pageX + "px",
       zIndex: STATE.zIndex(),
     },
     dataset: {
-      color: STATE.selectedColor(),
+      id,
+      color: color || STATE.selectedColor(),
     },
   });
   const handle = createElm({
@@ -87,6 +161,22 @@ function createSticky(pageY, pageX) {
   });
   const textarea = createElm({
     tag: "textarea",
+    value: value,
+  });
+
+  textarea.onkeydown = debounce((e) => {
+    const parent = e.target.parentElement;
+    const { top, left } = parent.style;
+    const { id, color } = parent.dataset;
+    const { value } = e.target;
+
+    updateSticky({
+      id: parseInt(id),
+      top,
+      left,
+      color,
+      message: value,
+    });
   });
 
   newSticky.appendChild(handle);
@@ -116,12 +206,24 @@ function stickyMouseDown(e) {
 
     function mouseUp(e) {
       STATE.dragging = null;
-      document.removeEventListener("mousemove", mouseMove);
-      document.removeEventListener("mouseup", mouseUp);
+      const message = e.currentTarget.querySelector("textarea").value;
+      const { top, left } = e.currentTarget.style;
+      const { id, color } = e.currentTarget.dataset;
+
+      updateSticky({
+        id: parseInt(id),
+        top,
+        left,
+        message,
+        color,
+      });
+
+      current.removeEventListener("mousemove", mouseMove);
+      current.removeEventListener("mouseup", mouseUp);
     }
 
-    document.addEventListener("mousemove", mouseMove);
-    document.addEventListener("mouseup", mouseUp);
+    current.addEventListener("mousemove", mouseMove);
+    current.addEventListener("mouseup", mouseUp);
   }
 }
 
@@ -150,6 +252,12 @@ function colorSelectMouseDown(e) {
 
     function mouseUp(e) {
       STATE.dragging = null;
+      addSticky({
+        top: e.pageY,
+        left: e.pageX,
+        color: STATE.selectedColor(),
+      });
+
       document.removeEventListener("mousemove", mouseMove);
       document.removeEventListener("mouseup", mouseUp);
     }
@@ -190,25 +298,6 @@ function colorSelectClick(e) {
   colorOptions.classList.toggle("hidden");
 }
 
-function colorSelectDragStart(e) {
-  const newSticky = createElm({
-    tag: "div",
-    classList: "sticky remove",
-    dataset: {
-      color: STATE.selectedColor(),
-    },
-  });
-  document.body.appendChild(newSticky);
-  e.dataTransfer.setDragImage(newSticky, 0, 0);
-}
-
-function colorSelectDragEnd(e) {
-  const newSticky = createSticky(e.pageY, e.pageX);
-  removeChildren(".sticky.remove");
-
-  stickyContainer.appendChild(newSticky);
-}
-
 // Color Select Events --- END
 
 function stickyTouchMove(e) {
@@ -239,7 +328,8 @@ function trashUp(e) {
     let confirm = window.confirm("Are you sure you want to delete this?");
     console.log(confirm);
     if (confirm) {
-      console.log(STATE.dragging);
+      deleteSticky(STATE.dragging.dataset.id);
+
       STATE.dragging.remove();
       STATE.dragging = null;
       trashPath.style.fill = "";
@@ -259,4 +349,5 @@ trash.addEventListener("touchend", (e) => {
   trashPath.style.fill = "";
 });
 
-const x = document.querySelector("body");
+// fetch Stickies on first render
+getStickies();
