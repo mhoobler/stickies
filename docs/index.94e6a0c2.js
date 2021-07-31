@@ -1,43 +1,4 @@
-<!DOCTYPE html>
-<html>
-  <head><link rel="stylesheet" href="/index.ea57e63c.css">
-    <meta charset="utf-8">
-    <title>Stickies</title>
-
-    <link rel="apple-touch-icon" href="/pwa_icon_192.a499fa6e.png">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/favicon.d9cba9e8.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-  </head>
-  <body>
-    <noscript> You must enable Javascript to run this app.</noscript>
-
-    <div class="App">
-
-      <div class="toolbar">
-        <div id="color-select" class="color-select" data-color="#FD1">
-          <ul id="color-options" class="color-options hidden">
-            <li data-color="#FD1"></li>
-            <li data-color="#AAF"></li>
-            <li data-color="#FAA"></li>
-          </ul>
-        </div>
-
-        <button id="reset" onclick="reset()">reset</button>
-
-        <div id="trash" class="trash">
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24"><path id="trash-path" d="M3 6v18h18v-18h-18zm5 14c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm4-18v2h-20v-2h5.711c.9 0 1.631-1.099 1.631-2h5.315c0 .901.73 2 1.631 2h5.712z" stroke="none" fill="#343434"></path></svg>
-        </div>
-      </div>
-
-      <div id="sticky-container" class="sticky-container">
-
-      </div>
-
-    </div>
-    
-    <script src="/index.94e6a0c2.js"></script>
-    <script>// modules are defined as an array
+// modules are defined as an array
 // [ module function, map of requires ]
 //
 // map of requires is short require name -> numeric require
@@ -179,12 +140,12 @@
       this[globalName] = mainExports;
     }
   }
-})({"2v16J":[function(require,module,exports) {
+})({"6ijR0":[function(require,module,exports) {
 var HMR_HOST = null;
 var HMR_PORT = 1234;
 var HMR_SECURE = false;
 var HMR_ENV_HASH = "d751713988987e9331980363e24189ce";
-module.bundle.HMR_BUNDLE_ID = "57eb5cd529251321bc73c3943801b6f0";
+module.bundle.HMR_BUNDLE_ID = "78f45bcc58e0f2f4bb3f826394e6a0c2";
 // @flow
 /*global HMR_HOST, HMR_PORT, HMR_ENV_HASH, HMR_SECURE*/
 /*::
@@ -466,33 +427,231 @@ function hmrAcceptRun(bundle, id) {
   acceptedAssets[id] = true;
 }
 
-},{}],"4gGcw":[function(require,module,exports) {
-const sw = "./serviceWorker.js";
-      if("serviceWorker" in navigator) {
-      navigator.serviceWorker
-      .register(sw)
-      .then(registration => {
-        registration.onupdatefound = () => {
-          const installingWorker = registration.installing;
-          if (installingWorker === null) {
-            return
-            ;
-          }
-          installingWorker.onstatechange = () => {
-            if (installingWorker.state === "installed") {
-              if (navigator.serviceWorker.controller) {
-                console.log('Need to update');
-              } else {
-                console.log("Content is chached");
-              }
-            }
-          }
-        }
-      })
-      .catch(err => console.error(err))
-      }
-},{}]},["2v16J","4gGcw"], "4gGcw", "parcelRequiree548")
+},{}],"3GZMZ":[function(require,module,exports) {
+require("../styles/style.scss");
+const colorSelect = document.getElementById("color-select");
+const colorOptions = document.getElementById("color-options");
+const stickyContainer = document.getElementById("sticky-container");
+const trash = document.getElementById("trash");
+const trashPath = document.getElementById("trash-path");
+const hidden = document.getElementById("hidden");
+const removeChildren = query => {
+  const remove = [...document.querySelectorAll(query)];
+  for (let elm of remove) {
+    document.body.removeChild(elm);
+  }
+};
+const removeChild = document.body.removeChild;
+function* inf() {
+  let index = 0;
+  while (true) {
+    yield index++;
+  }
+}
+var gen = inf();
+document.getElementById("reset").addEventListener("click", () => {
+  const stickies = [...document.querySelectorAll(".sticky")];
+  for (let s of stickies) {
+    s.style.zIndex = 0;
+  }
+  gen = inf();
+});
+const STATE = {
+  selectedColor: () => colorSelect.getAttribute("data-color"),
+  showingOptions: () => !colorOptions.classList.contains("hidden"),
+  zIndex: () => gen.next().value,
+  getOffset: target => {
+    var {top, left} = target.style;
+    top = parseInt(top.slice(0, -2));
+    left = parseInt(left.slice(0, -2));
+    return {
+      top,
+      left
+    };
+  },
+  dragging: null
+};
+const createElm = obj => {
+  const {tag, classList, id, value, style, dataset} = obj;
+  const elm = document.createElement(tag);
+  elm.classList = classList;
+  if (id) {
+    elm.id = id;
+  }
+  if (value) {
+    elm.setAttribute("value", value);
+  }
+  if (style) {
+    for (let k of Object.keys(style)) {
+      elm.style[k] = style[k];
+    }
+  }
+  if (dataset) {
+    for (let k of Object.keys(dataset)) {
+      elm.dataset[k] = dataset[k];
+    }
+  }
+  return elm;
+};
+function createSticky(pageY, pageX) {
+  const newSticky = createElm({
+    tag: "div",
+    classList: "sticky",
+    style: {
+      top: pageY + "px",
+      left: pageX + "px",
+      zIndex: STATE.zIndex()
+    },
+    dataset: {
+      color: STATE.selectedColor()
+    }
+  });
+  const handle = createElm({
+    tag: "div"
+  });
+  const textarea = createElm({
+    tag: "textarea"
+  });
+  newSticky.appendChild(handle);
+  newSticky.appendChild(textarea);
+  newSticky.draggable;
+  // newSticky.addEventListener("dragstart", stickyDragStart);
+  // newSticky.addEventListener("dragend", stickyDragEnd);
+  newSticky.addEventListener("touchmove", stickyTouchMove);
+  newSticky.addEventListener("mousedown", stickyMouseDown);
+  return newSticky;
+}
+function stickyMouseDown(e) {
+  e.currentTarget.style.zIndex = STATE.zIndex();
+  if (e.target.tagName !== "TEXTAREA") {
+    const current = e.currentTarget;
+    STATE.dragging = current;
+    const {top, left} = STATE.getOffset(current);
+    const xOffset = left - e.pageX;
+    const yOffset = top - e.pageY;
+    function mouseMove(e) {
+      current.style.top = yOffset + e.pageY + "px";
+      current.style.left = xOffset + e.pageX + "px";
+    }
+    function mouseUp(e) {
+      STATE.dragging = null;
+      document.removeEventListener("mousemove", mouseMove);
+      document.removeEventListener("mouseup", mouseUp);
+    }
+    document.addEventListener("mousemove", mouseMove);
+    document.addEventListener("mouseup", mouseUp);
+  }
+}
+// Color Select Events --- START
+colorSelect.addEventListener("mouseup", colorSelectClick);
+colorSelect.addEventListener("mousedown", colorSelectMouseDown);
+// colorSelect.addEventListener("dragstart", colorSelectDragStart);
+// colorSelect.addEventListener("dragend", colorSelectDragEnd);
+// touch events
+colorSelect.addEventListener("touchstart", colorSelectTouchStart);
+colorSelect.addEventListener("touchend", colorSelectTouchEnd);
+var timeout;
+function colorSelectMouseDown(e) {
+  timeout = setTimeout(() => {
+    const newSticky = createSticky(e.pageY, e.pageX);
+    stickyContainer.appendChild(newSticky);
+    STATE.dragging = newSticky;
+    function mouseMove(e) {
+      newSticky.style.top = e.pageY + "px";
+      newSticky.style.left = e.pageX + "px";
+    }
+    function mouseUp(e) {
+      STATE.dragging = null;
+      document.removeEventListener("mousemove", mouseMove);
+      document.removeEventListener("mouseup", mouseUp);
+    }
+    document.addEventListener("mousemove", mouseMove);
+    document.addEventListener("mouseup", mouseUp);
+  }, 200);
+}
+var evtFunc;
+function colorSelectTouchStart(e) {
+  const newSticky = createSticky(0, 0);
+  console.log(newSticky);
+  evtFunc = e => colorSelectTouchMove(e, newSticky);
+  colorSelect.addEventListener("touchmove", evtFunc);
+  stickyContainer.appendChild(newSticky);
+}
+function colorSelectTouchMove(e, sticky) {
+  sticky.style.top = e.targetTouches[0].pageY + "px";
+  sticky.style.left = e.targetTouches[0].pageX + "px";
+}
+function colorSelectTouchEnd(e) {
+  console.log(e);
+  colorSelect.removeEventListener("touchmove", evtFunc);
+}
+function colorSelectClick(e) {
+  console.log("c");
+  if (timeout) {
+    clearTimeout(timeout);
+  }
+  const targetValue = e.target.dataset.color;
+  e.currentTarget.setAttribute("data-color", targetValue);
+  colorOptions.classList.toggle("hidden");
+}
+function colorSelectDragStart(e) {
+  const newSticky = createElm({
+    tag: "div",
+    classList: "sticky remove",
+    dataset: {
+      color: STATE.selectedColor()
+    }
+  });
+  document.body.appendChild(newSticky);
+  e.dataTransfer.setDragImage(newSticky, 0, 0);
+}
+function colorSelectDragEnd(e) {
+  const newSticky = createSticky(e.pageY, e.pageX);
+  removeChildren(".sticky.remove");
+  stickyContainer.appendChild(newSticky);
+}
+// Color Select Events --- END
+function stickyTouchMove(e) {
+  STATE.dragged = e.currentTarget;
+  e.currentTarget.style.top = e.targetTouches[0].pageY + "px";
+  e.currentTarget.style.left = e.targetTouches[0].pageX + "px";
+  touchTarget = e;
+}
+function trashDrop(e) {
+  console.log(e);
+  trashLeave(e);
+}
+function trashEnter(e) {
+  if (STATE.dragging) {
+    trashPath.style.fill = "#F33";
+  }
+}
+function trashLeave(e) {
+  trashPath.style.fill = "";
+}
+function trashUp(e) {
+  if (STATE.dragging) {
+    let confirm = window.confirm("Are you sure you want to delete this?");
+    console.log(confirm);
+    if (confirm) {
+      console.log(STATE.dragging);
+      STATE.dragging.remove();
+      STATE.dragging = null;
+      trashPath.style.fill = "";
+    }
+  }
+}
+trash.addEventListener("mouseenter", trashEnter);
+trash.addEventListener("mouseleave", trashLeave);
+trash.addEventListener("mouseup", trashUp);
+trash.addEventListener("touchstart", e => {
+  trashPath.style.fill = "#F33";
+});
+trash.addEventListener("touchend", e => {
+  trashPath.style.fill = "";
+});
+const x = document.querySelector("body");
 
-</script>
-  </body>
-</html>
+},{"../styles/style.scss":"2zgbc"}],"2zgbc":[function() {},{}]},["6ijR0","3GZMZ"], "3GZMZ", "parcelRequiree548")
+
+//# sourceMappingURL=index.94e6a0c2.js.map
