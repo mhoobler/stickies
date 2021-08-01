@@ -1,11 +1,12 @@
 import "../styles/style.scss";
 import initDB from "./indexedDB.js";
 
+const App = document.getElementById("App");
 const colorSelect = document.getElementById("color-select");
 const colorOptions = document.getElementById("color-options");
 const stickyContainer = document.getElementById("sticky-container");
 const trash = document.getElementById("trash");
-const trashPath = document.getElementById("trash-path");
+const trashPath = document.getElementById("trash").querySelector("path");
 const hidden = document.getElementById("hidden");
 
 function getStickies() {
@@ -26,12 +27,13 @@ function getStickies() {
     .catch((err) => console.error(err));
 }
 
-function addSticky({ color, top, left }) {
+function addSticky({ color, top, left }, elm) {
   initDB()
     .then((res) => {
       const request = res.store.add({ color, top, left, message: "" });
       request.onsuccess = (evt) => {
-        console.log(evt.target.result);
+        console.log("add sticky: ", evt.target.result);
+        elm.dataset.id = evt.target.result;
       };
       request.onerror = (evt) => {
         console.log(evt);
@@ -135,6 +137,7 @@ function createElm(obj) {
 const debounce = (func, time = 1000) => {
   let timeout;
   return (args) => {
+    console.log(func);
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       func(args);
@@ -184,14 +187,79 @@ function createSticky(id, pageY, pageX, color = null, value = null) {
   newSticky.draggable;
   //newSticky.addEventListener("dragstart", stickyDragStart);
   //newSticky.addEventListener("dragend", stickyDragEnd);
-  newSticky.addEventListener("touchmove", stickyTouchMove);
+  newSticky.addEventListener("touchstart", stickyTouchStart);
   newSticky.addEventListener("mousedown", stickyMouseDown);
 
   return newSticky;
 }
 
+function stickyTouchStart(e) {
+  if (e.target.tagName !== "TEXTAREA") {
+    const current = e.currentTarget;
+    STATE.dragging = current;
+    const { top, left } = STATE.getOffset(current);
+    console.log(e.targetTouches[0]);
+    const xOffset = left - e.targetTouches[0].pageX;
+    const yOffset = top - e.targetTouches[0].pageY;
+
+    const trashRect = trashPath.getBoundingClientRect();
+    trashRect.x = Math.floor(trashRect.x);
+    trashRect.y = Math.floor(trashRect.y);
+    var pageX, pageY;
+
+    function touchMove(e) {
+      pageX = e.targetTouches[0].pageX;
+      pageY = e.targetTouches[0].pageY;
+      const { x, y, width, height } = trashRect;
+
+      if (pageX > x && pageX < x + width && pageY > y && pageY < y + height) {
+        trashPath.style.fill = "#F33";
+      } else {
+        trashPath.style.fill = "";
+      }
+
+      current.style.top = yOffset + pageY + "px";
+      current.style.left = xOffset + pageX + "px";
+    }
+
+    function touchEnd(e) {
+      console.log(e);
+      const { x, y, width, height } = trashRect;
+
+      const message = current.querySelector("textarea").value;
+      const { top, left } = current.style;
+      const { id, color } = current.dataset;
+
+      if (pageX > x && pageX < x + width && pageY > y && pageY < y + height) {
+        trashPath.style.fill = "#F33";
+        trashUp();
+        return;
+      }
+
+      STATE.dragging = null;
+
+      updateSticky({
+        id: parseInt(id),
+        top,
+        left,
+        message,
+        color,
+      });
+
+      current.removeEventListener("touchmove", touchMove);
+      current.removeEventListener("touchend", touchEnd);
+      current.addEventListener("touchstart", stickyTouchStart);
+    }
+
+    current.addEventListener("touchmove", touchMove);
+    current.addEventListener("touchend", touchEnd);
+    current.removeEventListener("touchstart", stickyTouchStart);
+  }
+}
+
 function stickyMouseDown(e) {
   e.currentTarget.style.zIndex = STATE.zIndex();
+  const { height, width } = App.getBoundingClientRect();
   if (e.target.tagName !== "TEXTAREA") {
     const current = e.currentTarget;
     STATE.dragging = current;
@@ -200,11 +268,16 @@ function stickyMouseDown(e) {
     const yOffset = top - e.pageY;
 
     function mouseMove(e) {
+      console.log(e);
+      App.style.height = height + "px";
+      App.style.width = height + "px";
       current.style.top = yOffset + e.pageY + "px";
       current.style.left = xOffset + e.pageX + "px";
     }
 
     function mouseUp(e) {
+      App.style.height = "";
+      App.style.width = "";
       STATE.dragging = null;
       const message = e.currentTarget.querySelector("textarea").value;
       const { top, left } = e.currentTarget.style;
@@ -240,8 +313,9 @@ colorSelect.addEventListener("touchend", colorSelectTouchEnd);
 var timeout;
 
 function colorSelectMouseDown(e) {
+  console.log("d");
   timeout = setTimeout(() => {
-    const newSticky = createSticky(e.pageY, e.pageX);
+    const newSticky = createSticky(0, e.pageY, e.pageX);
     stickyContainer.appendChild(newSticky);
     STATE.dragging = newSticky;
 
@@ -252,11 +326,14 @@ function colorSelectMouseDown(e) {
 
     function mouseUp(e) {
       STATE.dragging = null;
-      addSticky({
-        top: e.pageY,
-        left: e.pageX,
-        color: STATE.selectedColor(),
-      });
+      addSticky(
+        {
+          top: e.pageY,
+          left: e.pageX,
+          color: STATE.selectedColor(),
+        },
+        newSticky
+      );
 
       document.removeEventListener("mousemove", mouseMove);
       document.removeEventListener("mouseup", mouseUp);
@@ -267,28 +344,56 @@ function colorSelectMouseDown(e) {
   }, 200);
 }
 
-var evtFunc;
-
 function colorSelectTouchStart(e) {
-  const newSticky = createSticky(0, 0);
-  console.log(newSticky);
-  evtFunc = (e) => colorSelectTouchMove(e, newSticky);
-  colorSelect.addEventListener("touchmove", evtFunc);
-  stickyContainer.appendChild(newSticky);
-}
+  colorSelect.removeEventListener("mouseup", colorSelectClick);
+  colorSelect.removeEventListener("mousedown", colorSelectMouseDown);
 
-function colorSelectTouchMove(e, sticky) {
-  sticky.style.top = e.targetTouches[0].pageY + "px";
-  sticky.style.left = e.targetTouches[0].pageX + "px";
+  timeout = setTimeout(() => {
+    const newSticky = createSticky(
+      0,
+      e.targetTouches[0].pageY,
+      e.targetTouches[0].pageX
+    );
+    stickyContainer.appendChild(newSticky);
+
+    function touchMove(e) {
+      newSticky.style.top = e.targetTouches[0].pageY + "px";
+      newSticky.style.left = e.targetTouches[0].pageX + "px";
+      colorSelect.removeEventListener("touchend", colorSelectTouchEnd);
+    }
+
+    function touchEnd(e) {
+      timeout = null;
+      addSticky(
+        {
+          top: newSticky.style.top,
+          left: newSticky.style.left,
+          color: STATE.selectedColor(),
+        },
+        newSticky
+      );
+      document.removeEventListener("touchmove", touchMove);
+      document.removeEventListener("touchend", touchEnd);
+      colorSelect.removeEventListener("touchend", colorSelectTouchEnd);
+      colorSelect.addEventListener("touchend", colorSelectTouchEnd);
+    }
+
+    document.addEventListener("touchmove", touchMove);
+    document.addEventListener("touchend", touchEnd);
+  }, 200);
 }
 
 function colorSelectTouchEnd(e) {
-  console.log(e);
-  colorSelect.removeEventListener("touchmove", evtFunc);
+  if (timeout) {
+    clearTimeout(timeout);
+  }
+  const targetValue = e.target.dataset.color;
+  e.currentTarget.setAttribute("data-color", targetValue);
+
+  colorOptions.classList.toggle("hidden");
 }
 
 function colorSelectClick(e) {
-  console.log("c");
   if (timeout) {
     clearTimeout(timeout);
   }
@@ -300,22 +405,21 @@ function colorSelectClick(e) {
 
 // Color Select Events --- END
 
-function stickyTouchMove(e) {
-  STATE.dragged = e.currentTarget;
-  e.currentTarget.style.top = e.targetTouches[0].pageY + "px";
-  e.currentTarget.style.left = e.targetTouches[0].pageX + "px";
+function stickyTouchEnd(e) {
+  if (e.target.tagName !== "TEXTAREA") {
+    const parent = e.currentTarget;
+    console.log(parent);
+    const message = parent.querySelector("textarea").value;
+    const { top, left } = parent.style;
+    const { id, color } = parent.dataset;
 
-  touchTarget = e;
-}
-
-function trashDrop(e) {
-  console.log(e);
-  trashLeave(e);
-}
-
-function trashEnter(e) {
-  if (STATE.dragging) {
-    trashPath.style.fill = "#F33";
+    updateSticky({
+      id: parseInt(id),
+      top,
+      left,
+      message,
+      color,
+    });
   }
 }
 
@@ -323,10 +427,9 @@ function trashLeave(e) {
   trashPath.style.fill = "";
 }
 
-function trashUp(e) {
+function trashUp() {
   if (STATE.dragging) {
     let confirm = window.confirm("Are you sure you want to delete this?");
-    console.log(confirm);
     if (confirm) {
       deleteSticky(STATE.dragging.dataset.id);
 
@@ -334,6 +437,12 @@ function trashUp(e) {
       STATE.dragging = null;
       trashPath.style.fill = "";
     }
+  }
+}
+
+function trashEnter(e) {
+  if (STATE.dragging) {
+    trashPath.style.fill = "#F33";
   }
 }
 

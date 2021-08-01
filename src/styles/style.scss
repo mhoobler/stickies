@@ -6,6 +6,7 @@
   outline: none;
   list-style: none;
   box-sizing: border-box;
+  user-select: none;
 
   &[data-color="#FD1"] {
     background-color: #FD1;
@@ -29,17 +30,12 @@ html, body, .App {
   overflow: hidden;
 }
 
-body {
+.App {
   background: radial-gradient(circle at 100% 0%, #3e7055, #316147);
   background-repeat: no-repeat;
-  height: 100vh;
-  width: 100vw;
-}
-
-.App {
   position: fixed;
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
+  min-width: 100vw;
 }
 
 .toolbar {
@@ -96,6 +92,7 @@ body {
     position: absolute;
     min-height: 8rem;
     min-width: 8rem;
+    touch-action: none;
 
     div {
       height: 1rem;
@@ -109,6 +106,7 @@ body {
       min-height: 8rem;
       color: #454545;
       font-weight: bold;
+      user-select: text;
       background-color: transparent;
         margin: 0 !important;
       &::-webkit-scrollbar{
