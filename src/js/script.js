@@ -129,7 +129,6 @@ function createElm(obj) {
 const debounce = (func, time = 1000) => {
   let timeout;
   return (args) => {
-    console.log(func);
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       func(args);
@@ -138,7 +137,6 @@ const debounce = (func, time = 1000) => {
 };
 
 function createSticky(id, pageY, pageX, color = null, value = null) {
-  console.log("x");
   const wrapper = createElm({
     tag: "div",
     classList: "sticky-wrapper",
@@ -169,7 +167,8 @@ function createSticky(id, pageY, pageX, color = null, value = null) {
 
   textarea.onkeydown = debounce((e) => {
     const { top, left } = wrapper.style;
-    const { id, color } = wrapper.dataset;
+    const { id } = wrapper.dataset;
+    const { color } = newSticky.dataset;
     const { value } = e.target;
 
     updateSticky({
@@ -193,12 +192,11 @@ function createSticky(id, pageY, pageX, color = null, value = null) {
 
 function stickyTouchStart(e) {
   e.currentTarget.parentElement.style.zIndex = STATE.zIndex();
-  console.log("ts");
   if (e.target.tagName !== "TEXTAREA") {
-    const current = e.currentTarget.parentElement;
+    const current = e.currentTarget;
+    const parent = current.parentElement;
     STATE.dragging = current;
-    const { top, left } = STATE.getOffset(current);
-    console.log(e.targetTouches[0]);
+    const { top, left } = STATE.getOffset(parent);
     const xOffset = left - e.targetTouches[0].pageX;
     const yOffset = top - e.targetTouches[0].pageY;
 
@@ -218,17 +216,17 @@ function stickyTouchStart(e) {
         trashPath.style.fill = "";
       }
 
-      current.style.top = yOffset + pageY + "px";
-      current.style.left = xOffset + pageX + "px";
+      parent.style.top = yOffset + pageY + "px";
+      parent.style.left = xOffset + pageX + "px";
     }
 
     function touchEnd(e) {
-      console.log(e);
       const { x, y, width, height } = trashRect;
 
       const message = current.querySelector("textarea").value;
-      const { top, left } = current.style;
-      const { id, color } = current.dataset;
+      const { top, left } = parent.style;
+      const { id } = parent.dataset;
+      const { color } = current.dataset;
 
       if (pageX > x && pageX < x + width && pageY > y && pageY < y + height) {
         trashPath.style.fill = "#F33";
@@ -258,31 +256,27 @@ function stickyTouchStart(e) {
 }
 
 function stickyMouseDown(e) {
-  console.log("md");
   e.currentTarget.parentElement.style.zIndex = STATE.zIndex();
   const { height, width } = App.getBoundingClientRect();
   if (e.target.tagName !== "TEXTAREA") {
-    const current = e.currentTarget.parentElement;
+    const current = e.currentTarget;
+    const parent = e.currentTarget.parentElement;
     STATE.dragging = current;
-    const { top, left } = STATE.getOffset(current);
+    const { top, left } = STATE.getOffset(parent);
     const xOffset = left - e.pageX;
     const yOffset = top - e.pageY;
 
     function mouseMove(e) {
-      App.style.height = height + "px";
-      App.style.width = height + "px";
-      current.style.top = yOffset + e.pageY + "px";
-      current.style.left = xOffset + e.pageX + "px";
+      parent.style.top = yOffset + e.pageY + "px";
+      parent.style.left = xOffset + e.pageX + "px";
     }
 
     function mouseUp(e) {
-      App.style.height = "";
-      App.style.width = "";
       STATE.dragging = null;
       const message = current.querySelector("textarea").value;
-      const { top, left } = current.style;
-      const { id, color } = current.dataset;
-      console.log(id);
+      const { top, left } = parent.style;
+      const { id } = parent.dataset;
+      const { color } = current.dataset;
 
       updateSticky({
         id: parseInt(id),
@@ -320,7 +314,6 @@ function colorSelectMouseDown(e) {
     STATE.dragging = newSticky;
 
     function mouseMove(e) {
-      console.log("new sticky", e);
       newSticky.style.top = e.pageY + "px";
       newSticky.style.left = e.pageX + "px";
     }
@@ -409,7 +402,6 @@ function colorSelectClick(e) {
 function stickyTouchEnd(e) {
   if (e.target.tagName !== "TEXTAREA") {
     const parent = e.currentTarget;
-    console.log(parent);
     const message = parent.querySelector("textarea").value;
     const { top, left } = parent.style;
     const { id, color } = parent.dataset;
