@@ -41,10 +41,10 @@ html, body, .App {
 .toolbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 0 10%;
   position: fixed;
-  top: 1rem;
-  height: 1rem;
+  height: 3rem;
   width: 100%;
   z-index: 9999;
   pointer-events: none;
@@ -77,6 +77,18 @@ html, body, .App {
     }
   }
 
+  .layout-select {
+    button {
+      background-color: transparent;
+      border-radius: 6px;
+      align-items: center;
+      padding: 4px;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.6);
+      }
+    }
+  }
+
   .trash {
     user-select: none;
     &:hover {
@@ -87,43 +99,54 @@ html, body, .App {
 
 .sticky-container {
   height: calc(100% - 1rem);
-  .sticky {
-    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+
+  .sticky-wrapper {
+    filter: drop-shadow(-2px 2px 2px rgba(0, 0, 0, 0.6));
     position: absolute;
-    min-height: 8rem;
-    min-width: 8rem;
+  }
+  .sticky {
+    position: relative;
+    min-height: 10.25rem;
+    min-width: 10rem;
+    clip-path: polygon(0 0, 0 calc(100% - 4px), calc(100% - 16px) calc(100% - 4px), 100% calc(100% - 19px), 100% 0);
     touch-action: none;
 
     div {
-      height: 1rem;
+      height: 1.25rem;
       &:hover{
         cursor: pointer;
       }
     }
 
     textarea {
-      min-width: 8rem;
-      min-height: 8rem;
+      min-width: 11rem;
+      min-height: 10rem;
       color: #454545;
       font-weight: bold;
       user-select: text;
       background-color: transparent;
         margin: 0 !important;
       &::-webkit-scrollbar{
-        width: 8px;
+        z-index: 1;
+        width: 16px;
         background-color: transparent;
       }
       &::-webkit-scrollbar-thumb{
+        border-width: 8px;
+        padding: 8px;
         border-radius: 8px;
         background-color: rgba(0, 0, 0, 0.35);
       }
       &::-webkit-resizer {
-        background: none;
-        background-color: rgba(255, 255, 255, 0.35);
-        &::after {
-          content: 't';
-        }
+        width: 16px;
+        background-color: rgba(255, 255, 255, 0.8);
       }
     }
   }
+}
+
+.alerts-container {
+  position: fixed;
+  bottom: 0px;
+  width: 100%;
 }

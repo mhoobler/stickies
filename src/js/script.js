@@ -88,14 +88,6 @@ function* inf() {
 
 var gen = inf();
 
-document.getElementById("reset").addEventListener("click", () => {
-  const stickies = [...document.querySelectorAll(".sticky")];
-  for (let s of stickies) {
-    s.style.zIndex = 0;
-  }
-  gen = inf();
-});
-
 const STATE = {
   selectedColor: () => colorSelect.getAttribute("data-color"),
   showingOptions: () => !colorOptions.classList.contains("hidden"),
@@ -146,16 +138,24 @@ const debounce = (func, time = 1000) => {
 };
 
 function createSticky(id, pageY, pageX, color = null, value = null) {
-  const newSticky = createElm({
+  console.log("x");
+  const wrapper = createElm({
     tag: "div",
-    classList: "sticky",
+    classList: "sticky-wrapper",
     style: {
+      zIndex: STATE.zIndex(),
       top: typeof pageY === "string" ? pageY : pageY + "px",
       left: typeof pageX === "string" ? pageX : pageX + "px",
-      zIndex: STATE.zIndex(),
+      color: color || STATE.selectedColor(),
     },
     dataset: {
       id,
+    },
+  });
+  const newSticky = createElm({
+    tag: "div",
+    classList: "sticky",
+    dataset: {
       color: color || STATE.selectedColor(),
     },
   });
@@ -168,9 +168,8 @@ function createSticky(id, pageY, pageX, color = null, value = null) {
   });
 
   textarea.onkeydown = debounce((e) => {
-    const parent = e.target.parentElement;
-    const { top, left } = parent.style;
-    const { id, color } = parent.dataset;
+    const { top, left } = wrapper.style;
+    const { id, color } = wrapper.dataset;
     const { value } = e.target;
 
     updateSticky({
@@ -182,20 +181,21 @@ function createSticky(id, pageY, pageX, color = null, value = null) {
     });
   });
 
+  wrapper.appendChild(newSticky);
   newSticky.appendChild(handle);
   newSticky.appendChild(textarea);
-  newSticky.draggable;
-  //newSticky.addEventListener("dragstart", stickyDragStart);
-  //newSticky.addEventListener("dragend", stickyDragEnd);
+
   newSticky.addEventListener("touchstart", stickyTouchStart);
   newSticky.addEventListener("mousedown", stickyMouseDown);
 
-  return newSticky;
+  return wrapper;
 }
 
 function stickyTouchStart(e) {
+  e.currentTarget.parentElement.style.zIndex = STATE.zIndex();
+  console.log("ts");
   if (e.target.tagName !== "TEXTAREA") {
-    const current = e.currentTarget;
+    const current = e.currentTarget.parentElement;
     STATE.dragging = current;
     const { top, left } = STATE.getOffset(current);
     console.log(e.targetTouches[0]);
@@ -258,17 +258,17 @@ function stickyTouchStart(e) {
 }
 
 function stickyMouseDown(e) {
-  e.currentTarget.style.zIndex = STATE.zIndex();
+  console.log("md");
+  e.currentTarget.parentElement.style.zIndex = STATE.zIndex();
   const { height, width } = App.getBoundingClientRect();
   if (e.target.tagName !== "TEXTAREA") {
-    const current = e.currentTarget;
+    const current = e.currentTarget.parentElement;
     STATE.dragging = current;
     const { top, left } = STATE.getOffset(current);
     const xOffset = left - e.pageX;
     const yOffset = top - e.pageY;
 
     function mouseMove(e) {
-      console.log(e);
       App.style.height = height + "px";
       App.style.width = height + "px";
       current.style.top = yOffset + e.pageY + "px";
@@ -279,9 +279,10 @@ function stickyMouseDown(e) {
       App.style.height = "";
       App.style.width = "";
       STATE.dragging = null;
-      const message = e.currentTarget.querySelector("textarea").value;
-      const { top, left } = e.currentTarget.style;
-      const { id, color } = e.currentTarget.dataset;
+      const message = current.querySelector("textarea").value;
+      const { top, left } = current.style;
+      const { id, color } = current.dataset;
+      console.log(id);
 
       updateSticky({
         id: parseInt(id),
@@ -291,12 +292,12 @@ function stickyMouseDown(e) {
         color,
       });
 
-      current.removeEventListener("mousemove", mouseMove);
-      current.removeEventListener("mouseup", mouseUp);
+      document.removeEventListener("mousemove", mouseMove);
+      document.removeEventListener("mouseup", mouseUp);
     }
 
-    current.addEventListener("mousemove", mouseMove);
-    current.addEventListener("mouseup", mouseUp);
+    document.addEventListener("mousemove", mouseMove);
+    document.addEventListener("mouseup", mouseUp);
   }
 }
 
@@ -313,13 +314,13 @@ colorSelect.addEventListener("touchend", colorSelectTouchEnd);
 var timeout;
 
 function colorSelectMouseDown(e) {
-  console.log("d");
   timeout = setTimeout(() => {
     const newSticky = createSticky(0, e.pageY, e.pageX);
     stickyContainer.appendChild(newSticky);
     STATE.dragging = newSticky;
 
     function mouseMove(e) {
+      console.log("new sticky", e);
       newSticky.style.top = e.pageY + "px";
       newSticky.style.left = e.pageX + "px";
     }
@@ -457,6 +458,78 @@ trash.addEventListener("touchstart", (e) => {
 trash.addEventListener("touchend", (e) => {
   trashPath.style.fill = "";
 });
+
+// Organizers
+
+function organize(str) {
+  const colorsArr = ["#FD1", "#FAA", "#AAF"];
+
+  //reset zIndex generator
+  gen = inf();
+
+  const stickies = colorsArr.map((e) => [
+    ...document.querySelectorAll(`.sticky[data-color="${e}"]`),
+  ]);
+
+  for (let dy = 0; dy < colorsArr.length; dy++) {
+    const stickies = [
+      ...document.querySelectorAll(`.sticky[data-color="${colorsArr[dy]}"]`),
+    ];
+
+    switch (str) {
+      case "diagonal": {
+        for (let dx = 0; dx < stickies.length; dx++) {
+          let wrapper = stickies[dx].parentElement;
+          let textarea = stickies[dx].querySelector("textarea");
+          wrapper.style.top = 35 * dx + 50 + "px";
+          wrapper.style.left = 20 * dx + 250 * dy + 50 + "px";
+          wrapper.style.zIndex = dx * colorsArr.length + dy;
+          textarea.style.width = 100 + "px";
+          textarea.style.height = 100 + "px";
+
+          // call zIndex generator to keep it updated
+          // ...hate this loop, but it's pretty fast
+          while (dx * colorsArr.length + dy > gen.next().value) {
+            gen.next().value;
+          }
+        }
+        break;
+      }
+
+      case "horizontal": {
+        for (let dx = 0; dx < stickies.length; dx++) {
+          let wrapper = stickies[dx].parentElement;
+          let textarea = stickies[dx].querySelector("textarea");
+          wrapper.style.top = dy * 200 + 50 + "px";
+          wrapper.style.left = dx * 50 + 50 + "px";
+          wrapper.style.zIndex = gen.next().value;
+          textarea.style.width = 100 + "px";
+          textarea.style.height = 100 + "px";
+        }
+        break;
+      }
+
+      case "vertical": {
+        for (let dx = 0; dx < stickies.length; dx++) {
+          let wrapper = stickies[dx].parentElement;
+          let textarea = stickies[dx].querySelector("textarea");
+          wrapper.style.left = dy * 200 + 50 + "px";
+          wrapper.style.top = dx * 50 + 50 + "px";
+          wrapper.style.zIndex = gen.next().value;
+          textarea.style.width = 100 + "px";
+          textarea.style.height = 100 + "px";
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+}
+
+document.getElementById("diagonal").onclick = () => organize("diagonal");
+document.getElementById("horizontal").onclick = () => organize("horizontal");
+document.getElementById("vertical").onclick = () => organize("vertical");
 
 // fetch Stickies on first render
 getStickies();
