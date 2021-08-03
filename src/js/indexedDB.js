@@ -2,10 +2,6 @@ const getTransaction = async (db) =>
   new Promise((resolve, reject) => {
     var transaction = db.transaction(["stickies"], "readwrite");
 
-    transaction.oncomplete = (evt) => {
-      console.log("transaction success", evt);
-    };
-
     transaction.onerror = (evt) => {
       console.error("transaction error", evt);
     };
@@ -29,7 +25,6 @@ const initDB = async () =>
     };
 
     request.onsuccess = async (evt) => {
-      console.log(evt);
       db = evt.target.result;
 
       db.onerror = (evt) => {
@@ -41,7 +36,7 @@ const initDB = async () =>
         const store = transaction.objectStore("stickies");
         resolve({ store });
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
 
@@ -60,4 +55,64 @@ const initDB = async () =>
     };
   });
 
-export default initDB;
+function getStickies(cb) {
+  initDB()
+    .then((res) => {
+      const request = res.store.getAll();
+      request.onsuccess = (evt) => {
+        const stickies = evt.target.result;
+        cb(stickies);
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
+
+function addSticky(data, cb) {
+  const { color, top, left } = data;
+
+  initDB()
+    .then((res) => {
+      const request = res.store.add({ color, top, left, message: "" });
+      request.onsuccess = (evt) => {
+        cb(evt.target.result);
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
+
+function updateSticky(data, cb = () => {}) {
+  const { id, color, top, left, message } = data;
+  initDB()
+    .then((res) => {
+      const request = res.store.put({ id, color, top, left, message });
+      request.onsuccess = (evt) => {
+        cb(evt.target.result);
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
+
+function deleteSticky(data, cb = () => {}) {
+  const { id } = data;
+  initDB()
+    .then((res) => {
+      const request = res.store.delete(parseInt(id));
+      request.onsuccess = (evt) => {
+        cb(evt.target.result);
+      };
+      request.onerror = (evt) => {
+        console.log(evt);
+      };
+    })
+    .catch((err) => console.error(err));
+}
+export { getStickies, addSticky, updateSticky, deleteSticky };

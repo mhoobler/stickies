@@ -1,5 +1,10 @@
 import "../styles/style.scss";
-import initDB from "./indexedDB.js";
+import {
+  getStickies,
+  addSticky,
+  updateSticky,
+  deleteSticky,
+} from "./indexedDB.js";
 
 const App = document.getElementById("App");
 const colorSelect = document.getElementById("color-select");
@@ -9,76 +14,6 @@ const trash = document.getElementById("trash");
 const trashPath = document.getElementById("trash").querySelector("path");
 const hidden = document.getElementById("hidden");
 
-function getStickies() {
-  initDB()
-    .then((res) => {
-      const request = res.store.getAll();
-      request.onsuccess = (evt) => {
-        const stickies = evt.target.result;
-        for (let s of stickies) {
-          let newSticky = createSticky(s.id, s.top, s.left, s.color, s.message);
-          stickyContainer.appendChild(newSticky);
-        }
-      };
-      request.onerror = (evt) => {
-        console.log(evt);
-      };
-    })
-    .catch((err) => console.error(err));
-}
-
-function addSticky({ color, top, left }, elm) {
-  initDB()
-    .then((res) => {
-      const request = res.store.add({ color, top, left, message: "" });
-      request.onsuccess = (evt) => {
-        console.log("add sticky: ", evt.target.result);
-        elm.dataset.id = evt.target.result;
-      };
-      request.onerror = (evt) => {
-        console.log(evt);
-      };
-    })
-    .catch((err) => console.error(err));
-}
-
-function updateSticky({ id, color, top, left, message }) {
-  initDB()
-    .then((res) => {
-      const request = res.store.put({ id, color, top, left, message });
-      request.onsuccess = (evt) => {
-        console.log(evt.target.result);
-      };
-      request.onerror = (evt) => {
-        console.log(evt);
-      };
-    })
-    .catch((err) => console.error(err));
-}
-
-function deleteSticky(id) {
-  initDB()
-    .then((res) => {
-      const request = res.store.delete(parseInt(id));
-      request.onsuccess = (evt) => {
-        console.log(evt.target.result);
-      };
-      request.onerror = (evt) => {
-        console.log(evt);
-      };
-    })
-    .catch((err) => console.error(err));
-}
-
-const removeChildren = (query) => {
-  const remove = [...document.querySelectorAll(query)];
-  for (let elm of remove) {
-    document.body.removeChild(elm);
-  }
-};
-
-const removeChild = document.body.removeChild;
-
 function* inf() {
   let index = 0;
   while (true) {
@@ -86,12 +21,12 @@ function* inf() {
   }
 }
 
-var gen = inf();
+var getZ = inf();
 
 const STATE = {
   selectedColor: () => colorSelect.getAttribute("data-color"),
   showingOptions: () => !colorOptions.classList.contains("hidden"),
-  zIndex: () => gen.next().value,
+  zIndex: () => getZ.next().value,
   getOffset: (target) => {
     var { top, left } = target.style;
     top = parseInt(top.slice(0, -2));
@@ -256,7 +191,6 @@ function stickyTouchStart(e) {
 
 function stickyMouseDown(e) {
   e.currentTarget.parentElement.style.zIndex = STATE.zIndex();
-  const { height, width } = App.getBoundingClientRect();
   if (e.target.tagName !== "TEXTAREA") {
     const current = e.currentTarget;
     const parent = e.currentTarget.parentElement;
@@ -318,15 +252,16 @@ function stickyMouseDown(e) {
 }
 
 // Color Select Events --- START
-colorSelect.addEventListener("mouseup", colorSelectClick);
+// Note: We're handling events differently
 colorSelect.addEventListener("mousedown", colorSelectMouseDown);
-//colorSelect.addEventListener("dragstart", colorSelectDragStart);
-//colorSelect.addEventListener("dragend", colorSelectDragEnd);
-
-// touch events
 colorSelect.addEventListener("touchstart", colorSelectTouchStart);
-colorSelect.addEventListener("touchend", colorSelectTouchEnd);
+colorSelect.addEventListener("touchend", colorSelectClick);
+colorSelect.addEventListener("mouseup", colorSelectClick);
 
+// This timeout is used to differentiate between a click and a drag
+// DragEvents were a huge performance hit compared to MouseEvents
+// Seems like something to do with long idle frames,
+// but can't pin down exactly why DragEvents are so slow
 var timeout;
 
 function colorSelectMouseDown(e) {
@@ -335,11 +270,13 @@ function colorSelectMouseDown(e) {
     stickyContainer.appendChild(newSticky);
     STATE.dragging = newSticky;
 
+    // handle drag
     function mouseMove(e) {
       newSticky.style.top = e.pageY + "px";
       newSticky.style.left = e.pageX + "px";
     }
 
+    // handle end of drag
     function mouseUp(e) {
       STATE.dragging = null;
       addSticky(
@@ -348,7 +285,7 @@ function colorSelectMouseDown(e) {
           left: e.pageX,
           color: STATE.selectedColor(),
         },
-        newSticky
+        (id) => (newSticky.dataset.id = id)
       );
 
       document.removeEventListener("mousemove", mouseMove);
@@ -361,6 +298,7 @@ function colorSelectMouseDown(e) {
 }
 
 function colorSelectTouchStart(e) {
+  // TouchEvents can initiate MouseEvents, but not the other way around
   colorSelect.removeEventListener("mouseup", colorSelectClick);
   colorSelect.removeEventListener("mousedown", colorSelectMouseDown);
 
@@ -372,12 +310,14 @@ function colorSelectTouchStart(e) {
     );
     stickyContainer.appendChild(newSticky);
 
+    // Handle drag
     function touchMove(e) {
       newSticky.style.top = e.targetTouches[0].pageY + "px";
       newSticky.style.left = e.targetTouches[0].pageX + "px";
       colorSelect.removeEventListener("touchend", colorSelectTouchEnd);
     }
 
+    // Handle end of drag
     function touchEnd(e) {
       timeout = null;
       addSticky(
@@ -386,7 +326,7 @@ function colorSelectTouchStart(e) {
           left: newSticky.style.left,
           color: STATE.selectedColor(),
         },
-        newSticky
+        (id) => (newSticky.dataset.id = id)
       );
       document.removeEventListener("touchmove", touchMove);
       document.removeEventListener("touchend", touchEnd);
@@ -399,52 +339,24 @@ function colorSelectTouchStart(e) {
   }, 200);
 }
 
-function colorSelectTouchEnd(e) {
-  if (timeout) {
-    clearTimeout(timeout);
-  }
-  const targetValue = e.target.dataset.color;
-  e.currentTarget.setAttribute("data-color", targetValue);
-
-  colorOptions.classList.toggle("hidden");
-}
-
+// This fires when the user "clicks"
 function colorSelectClick(e) {
   if (timeout) {
     clearTimeout(timeout);
   }
   const targetValue = e.target.dataset.color;
-
   e.currentTarget.setAttribute("data-color", targetValue);
+
   colorOptions.classList.toggle("hidden");
 }
 
 // Color Select Events --- END
 
-function stickyTouchEnd(e) {
-  if (e.target.tagName !== "TEXTAREA") {
-    const parent = e.currentTarget;
-    const message = parent.querySelector("textarea").value;
-    const { top, left } = parent.style;
-    const { id, color } = parent.dataset;
-
-    updateSticky({
-      id: parseInt(id),
-      top,
-      left,
-      message,
-      color,
-    });
-  }
-}
-
 function deleteDragging() {
-  console.log(STATE.dragging);
   if (STATE.dragging) {
     let confirm = window.confirm("Are you sure you want to delete this?");
     if (confirm) {
-      console.log(STATE.dragging);
-      deleteSticky(STATE.dragging.dataset.id);
+      deleteSticky({ id: STATE.dragging.dataset.id });
 
       STATE.dragging.remove();
       STATE.dragging = null;
@@ -454,16 +366,11 @@ function deleteDragging() {
 }
 
 // Organizers
-
 function organize(str) {
   const colorsArr = ["#FD1", "#FAA", "#AAF"];
 
   //reset zIndex generator
-  gen = inf();
-
-  const stickies = colorsArr.map((e) => [
-    ...document.querySelectorAll(`.sticky[data-color="${e}"]`),
-  ]);
+  getZ = inf();
 
   for (let dy = 0; dy < colorsArr.length; dy++) {
     const stickies = [
@@ -478,13 +385,14 @@ function organize(str) {
           wrapper.style.top = 35 * dx + 50 + "px";
           wrapper.style.left = 20 * dx + 250 * dy + 50 + "px";
           wrapper.style.zIndex = dx * colorsArr.length + dy;
+          wrapper.style.transition = "top 0.5s, left 0.5s";
           textarea.style.width = 100 + "px";
           textarea.style.height = 100 + "px";
 
           // call zIndex generator to keep it updated
           // ...hate this loop, but it's pretty fast
-          while (dx * colorsArr.length + dy > gen.next().value) {
-            gen.next().value;
+          while (dx * colorsArr.length + dy > getZ.next().value) {
+            getZ.next().value;
           }
         }
         break;
@@ -496,7 +404,8 @@ function organize(str) {
           let textarea = stickies[dx].querySelector("textarea");
           wrapper.style.top = dy * 200 + 50 + "px";
           wrapper.style.left = dx * 50 + 50 + "px";
-          wrapper.style.zIndex = gen.next().value;
+          wrapper.style.zIndex = getZ.next().value;
+          wrapper.style.transition = "top 0.5s, left 0.5s";
           textarea.style.width = 100 + "px";
           textarea.style.height = 100 + "px";
         }
@@ -509,7 +418,8 @@ function organize(str) {
           let textarea = stickies[dx].querySelector("textarea");
           wrapper.style.left = dy * 200 + 50 + "px";
           wrapper.style.top = dx * 50 + 50 + "px";
-          wrapper.style.zIndex = gen.next().value;
+          wrapper.style.zIndex = getZ.next().value;
+          wrapper.style.transition = "top 0.5s, left 0.5s";
           textarea.style.width = 100 + "px";
           textarea.style.height = 100 + "px";
         }
@@ -519,6 +429,14 @@ function organize(str) {
         break;
     }
   }
+
+  setTimeout(() => {
+    const wrappers = [...document.querySelectorAll(".sticky-wrapper")];
+
+    for (let w of wrappers) {
+      w.style.transition = "";
+    }
+  }, 520);
 }
 
 document.getElementById("diagonal").onclick = () => organize("diagonal");
@@ -526,4 +444,9 @@ document.getElementById("horizontal").onclick = () => organize("horizontal");
 document.getElementById("vertical").onclick = () => organize("vertical");
 
 // fetch Stickies on first render
-getStickies();
+getStickies((stickies) => {
+  for (let s of stickies) {
+    let newSticky = createSticky(s.id, s.top, s.left, s.color, s.message);
+    stickyContainer.appendChild(newSticky);
+  }
+});
