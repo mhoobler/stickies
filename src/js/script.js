@@ -195,7 +195,7 @@ function stickyTouchStart(e) {
   if (e.target.tagName !== "TEXTAREA") {
     const current = e.currentTarget;
     const parent = current.parentElement;
-    STATE.dragging = current;
+    STATE.dragging = parent;
     const { top, left } = STATE.getOffset(parent);
     const xOffset = left - e.targetTouches[0].pageX;
     const yOffset = top - e.targetTouches[0].pageY;
@@ -211,7 +211,7 @@ function stickyTouchStart(e) {
       const { x, y, width, height } = trashRect;
 
       if (pageX > x && pageX < x + width && pageY > y && pageY < y + height) {
-        trashPath.style.fill = "#F33";
+        trashPath.style.fill = "#f33";
       } else {
         trashPath.style.fill = "";
       }
@@ -230,20 +230,19 @@ function stickyTouchStart(e) {
 
       if (pageX > x && pageX < x + width && pageY > y && pageY < y + height) {
         trashPath.style.fill = "#F33";
-        trashUp();
+        deleteDragging();
         return;
+      } else {
+        updateSticky({
+          id: parseInt(id),
+          top,
+          left,
+          message,
+          color,
+        });
       }
 
       STATE.dragging = null;
-
-      updateSticky({
-        id: parseInt(id),
-        top,
-        left,
-        message,
-        color,
-      });
-
       current.removeEventListener("touchmove", touchMove);
       current.removeEventListener("touchend", touchEnd);
       current.addEventListener("touchstart", stickyTouchStart);
@@ -261,31 +260,54 @@ function stickyMouseDown(e) {
   if (e.target.tagName !== "TEXTAREA") {
     const current = e.currentTarget;
     const parent = e.currentTarget.parentElement;
-    STATE.dragging = current;
+    STATE.dragging = parent;
     const { top, left } = STATE.getOffset(parent);
     const xOffset = left - e.pageX;
     const yOffset = top - e.pageY;
 
+    const trashRect = trashPath.getBoundingClientRect();
+    trashRect.x = Math.floor(trashRect.x);
+    trashRect.y = Math.floor(trashRect.y);
+    const { x, y, width, height } = trashRect;
+    var pageX, pageY;
+
     function mouseMove(e) {
+      pageX = e.pageX;
+      pageY = e.pageY;
+
+      if (pageX > x && pageX < x + width && pageY > y && pageY < y + height) {
+        trashPath.style.fill = "#f33";
+      } else {
+        trashPath.style.fill = "";
+      }
+
       parent.style.top = yOffset + e.pageY + "px";
       parent.style.left = xOffset + e.pageX + "px";
     }
 
     function mouseUp(e) {
-      STATE.dragging = null;
       const message = current.querySelector("textarea").value;
       const { top, left } = parent.style;
       const { id } = parent.dataset;
       const { color } = current.dataset;
 
-      updateSticky({
-        id: parseInt(id),
-        top,
-        left,
-        message,
-        color,
-      });
+      if (pageX > x && pageX < x + width && pageY > y && pageY < y + height) {
+        trashPath.style.fill = "#F33";
+        deleteDragging();
 
+        document.removeEventListener("mousemove", mouseMove);
+        document.removeEventListener("mouseup", mouseUp);
+      } else {
+        updateSticky({
+          id: parseInt(id),
+          top,
+          left,
+          message,
+          color,
+        });
+      }
+
+      STATE.dragging = null;
       document.removeEventListener("mousemove", mouseMove);
       document.removeEventListener("mouseup", mouseUp);
     }
@@ -416,14 +438,12 @@ function stickyTouchEnd(e) {
   }
 }
 
-function trashLeave(e) {
-  trashPath.style.fill = "";
-}
-
-function trashUp() {
+function deleteDragging() {
+  console.log(STATE.dragging);
   if (STATE.dragging) {
     let confirm = window.confirm("Are you sure you want to delete this?");
     if (confirm) {
+      console.log(STATE.dragging);
       deleteSticky(STATE.dragging.dataset.id);
 
       STATE.dragging.remove();
@@ -432,24 +452,6 @@ function trashUp() {
     }
   }
 }
-
-function trashEnter(e) {
-  if (STATE.dragging) {
-    trashPath.style.fill = "#F33";
-  }
-}
-
-trash.addEventListener("mouseenter", trashEnter);
-trash.addEventListener("mouseleave", trashLeave);
-trash.addEventListener("mouseup", trashUp);
-
-trash.addEventListener("touchstart", (e) => {
-  trashPath.style.fill = "#F33";
-});
-
-trash.addEventListener("touchend", (e) => {
-  trashPath.style.fill = "";
-});
 
 // Organizers
 
