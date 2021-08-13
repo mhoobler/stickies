@@ -30,6 +30,10 @@ html, body, .App {
   overflow: hidden;
 }
 
+button { 
+  background-color: transparent;
+}
+
 .App {
   background: radial-gradient(circle at 100% 0%, #3e7055, #316147);
   background-repeat: no-repeat;
@@ -89,11 +93,19 @@ html, body, .App {
     }
   }
 
+  .zoom-control {
+    #zoom-control2{
+      &::-webkit-slider-runnable-track{
+        color: red;
+      }
+      &::-webkit-slider-thumb {
+        background: #FD1;
+      }
+    }
+  }
+
   .trash {
     user-select: none;
-    &:hover {
-    }
-
   }
 }
 
@@ -147,6 +159,28 @@ html, body, .App {
 
 .alerts-container {
   position: fixed;
-  bottom: 0px;
+  bottom: -3rem;
+  left: 1rem;
   width: 100%;
+  transition: bottom 0.35s;
+  display: flex;
+
+  .alert {
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+  }
+
+  #registration-update {
+    color: white;
+    background-color: #FF7812;
+    * {
+      font-weight: bold;
+      color: white;
+      background-color: #FF7812;
+    }
+  }
+}
+
+.alerts-container.show {
+  bottom: 1rem;
 }
